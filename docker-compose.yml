@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  face-detection:
+    build: .
+    image: multi-face-video-classifier:latest
+    volumes:
+      # Mount directories for input/output
+      - ./input:/app/input
+      - ./output:/app/output
+      # Mount source code for development (optional)
+      - ./src:/app/src
+    environment:
+      - PYTHONPATH=/app
+      - NVIDIA_VISIBLE_DEVICES=all
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Override default command - example usage
+    command: >
+      python src/face_detection_scrfd.py 
+      /app/input/sample_video.mp4 
+      --mode rc5 
+      --output /app/output/results.json
+      --device 0
+    restart: "no"  # Don't restart automatically for batch processing

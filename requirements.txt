@@ -1,0 +1,18 @@
+# Core dependencies for face_detection_scrfd.py
+torch==2.4.0
+numpy==1.26.4
+opencv-python==4.8.1.78
+insightface==0.7.3
+onnxruntime-gpu==1.22.0
+
+# Video processing
+pillow==10.4.0
+
+# Machine learning utilities  
+transformers==4.44.2
+scikit-learn==1.7.1
+
+# Note: pathlib, argparse, logging, json, time, sys, os, typing, warnings, random are built-in Python modules
+
+# Visualization and debugging
+matplotlib==3.10.5
