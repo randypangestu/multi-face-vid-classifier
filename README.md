@@ -41,7 +41,7 @@ or on `assets/multiple_face_detection_report.pdf`
 
 ## Installation
 
-### Method 1: Virtual Environment Setup
+### Method 1: Virtual Environment Setup (Recommended)
 
 1. **Clone and setup**
    ```bash
@@ -55,7 +55,7 @@ or on `assets/multiple_face_detection_report.pdf`
    source venv/multi-face-classifier/bin/activate
    ```
 
-### Alternative Method: Docker Setup (Recommended)
+### Alternative Method: Docker Setup
 
 For containerized deployment with automatic GPU/CPU detection:
 
