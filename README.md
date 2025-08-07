@@ -2,6 +2,7 @@
 
 A robust binary classifier that analyzes videos to detect the presence of multiple live faces, distinguishing between faces on identity documents and live faces in the scene.
 
+**Notes: This project will be put into private repo after the test assessment is done**
 ## Overview
 
 This classifier analyzes video content and returns:
@@ -311,41 +312,6 @@ cp /path/to/edge_videos/* input/edge_cases/
 ```
 
 
-## Project Structure
-
-```
-multi-face-video-classifier/
-├── assets/                              # Documentation and evaluation assets
-│   ├── Veriff - Multiple Face Classifier Report.pdf  # Detailed evaluation report
-│   ├── labels/                          # Ground truth labels for evaluation
-│   │   ├── labels.txt                   # Main benchmark dataset labels
-│   │   └── labels_edge.txt              # Edge case dataset labels
-│   └── multiple-dark.jpg                # Process flow visualization
-├── bin/
-│   └── run_multi_face.py                # Main executable script
-├── src/
-│   └── multi_face_video_classifier/
-│       ├── video_pipeline.py            # Core classification logic (RC6)
-│       ├── video_pipeline_dev.py        # Development pipeline (RC1-RC5)
-│       ├── card_detector.py             # ID card detection using Grounding DINO
-│       └── utils/                       # Utility modules
-│           ├── face_tracking_utils.py   # Face tracking and recognition
-│           ├── pose_estimator.py        # Face pose estimation
-│           └── visualization_utils.py   # Visualization helpers
-├── tools/
-│   └── evaluate_model_performance.py    # Evaluation script with metrics
-├── deprecated_script/                   # Legacy code and experiments
-├── input/                              # Input video directories
-├── venv/                               # Virtual environment
-├── requirements.txt                    # Python dependencies
-├── Dockerfile                          # Docker configuration
-├── docker-compose.yml                 # Docker Compose setup
-├── build_docker.sh                    # Docker build script
-├── run_docker.sh                      # Docker run script
-├── setup_venv.sh                      # Virtual environment setup
-└── README.md                          # This documentation
-```
-
 ### Advanced Options (not recommended to use, might have certain bugs and issues)
 
 ```bash
@@ -358,21 +324,6 @@ python bin/run_multi_face.py /path/to/videos/ \
 # CPU-only processing
 python bin/run_multi_face.py /path/to/videos/ --device -1
 
-
-### Command Line Arguments
-
-- `video_path`: Path to video file or directory containing videos
-- `--model`: InsightFace model (`buffalo_l`, `buffalo_m`, `buffalo_s`) - default: `buffalo_l`
-- `--mode`: Processing mode (`rc1` to `rc6`) - default: `rc6` (most advanced)
-- `--max-frames`: Maximum frames to process per video - default: `50`
-- `--frame-skip`: Process every nth frame - default: `1`
-- `--det-size`: Detection input size [width height] - default: `640 640`
-- `--device`: GPU device ID (`-1` for CPU) - default: `0`
-- `--output`: Output directory for JSON results - default: same as input
-- `--visualize`: Create visualization videos with detections
-- `--output-video`: Custom path for visualization video
-- `--verbose`: Enable detailed logging
-- `--dev`: Use development pipeline (if available)
 
 ## Output Format
 
@@ -396,6 +347,3 @@ The classifier outputs JSON files with the following structure:
 }
 ```
 
-## License
-
-This project is for internal use and contains proprietary algorithms for face detection and recognition.
