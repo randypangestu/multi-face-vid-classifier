@@ -21,7 +21,8 @@ logger = logging.getLogger(__name__)
 
 
 class CardDetector:
-    """ID Card detector using Grounding DINO zero-shot object detection.
+    """
+    ID Card detector using Grounding DINO zero-shot object detection.
     
     This class provides a simple interface for detecting ID cards in images using
     the Grounding DINO model with a fixed text query of 'id card'.
@@ -485,6 +486,3 @@ class CardDetector:
         """
         return self._detect_with_full_details(image_input)
 
-
-if __name__ == "__main__":
-    exit(main())

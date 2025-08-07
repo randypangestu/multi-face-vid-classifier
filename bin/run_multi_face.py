@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent / "src"))
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
+VERSION = "1.0.0"  # Version of the multi-face video classifier
 
 def get_args():
     parser = argparse.ArgumentParser(description="Multi-Face Video Classifier, a binary classifier to detect if a video contains multiple faces."
@@ -128,7 +128,8 @@ def main():
         results = {
             'transaction_id': video_file.stem,
             'code': "0000", # 0000 is a placeholder for success
-            'message': "Success" # Placeholder message keys
+            'message': "Success", # Placeholder message keys
+            'version': VERSION,
         }
 
         classification_results = detector.classify_video(
@@ -169,27 +170,6 @@ def main():
         
         # Create visualization if requested
         # Set to False due to issues on saving videos
-        if False:
-            try:
-                if args.output_video:
-                    if len(video_files) == 1:
-                        output_video_path = args.output_video
-                    else:
-                        # Multiple files: modify output video name
-                        output_video_base = Path(args.output_video)
-                        output_video_path = str(output_video_base.parent / f"{output_video_base.stem}_{video_file.stem}{output_video_base.suffix}")
-                else:
-                    # Default: save next to original video with '_detected' suffix
-                    output_video_path = str(video_file.with_name(video_file.stem + "_detected.mp4"))
-                
-                detector.visualize_detections(
-                    video_path=str(video_file),
-                    results=results,
-                    output_video_path=output_video_path
-                )
-                logger.info(f"Visualization saved to: {output_video_path}")
-            except Exception as e:
-                logger.error(f"Failed to create visualization for {video_file.name}: {e}")
         successful_processes += 1
 
     # Print summary

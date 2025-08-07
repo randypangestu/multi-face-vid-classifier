@@ -55,7 +55,7 @@ or on `assets/multiple_face_detection_report.pdf`
    source venv/multi-face-classifier/bin/activate
    ```
 
-### Method 2: Docker Setup (Recommended)
+### Alternative Method: Docker Setup (Recommended)
 
 For containerized deployment with automatic GPU/CPU detection:
 
@@ -68,14 +68,7 @@ For containerized deployment with automatic GPU/CPU detection:
    - **CPU system**: Builds lightweight CPU-only image
 
 2. **Run with Docker**
-   ```bash
-   # Process all videos in a folder (recommended)
-   ./run_docker.sh folder_name
-   
-   # Examples:
-   ./run_docker.sh additional_vid    # Process input/additional_vid/
-   ./run_docker.sh veriff_videos     # Process input/veriff_videos/
-   ```
+   to run with docker follow **docker usage guide** section
 
 ## Usage
 
@@ -92,10 +85,23 @@ source venv/multi-face-classifier/bin/activate
 ```bash
 python bin/run_multi_face.py /path/to/video.mp4 --output /path/to/output_folder/
 ```
+
 **Batch Processing (Recommended):**
 ```bash
 python bin/run_multi_face.py /path/to/video/folder/ --output /path/to/output_folder
 ```
+**Example Usage with all videos:**
+```bash
+# create a folder
+mkdir input/all_videos
+# copy veriff videos and edge cases video
+cp -r /path/to/veriff_video_folder/ input/all_videos
+cp -r /path/to/edge_cases_video_folder/ input/all_videos
+
+#run the run_multi_face.py script
+python3 bin/run_multi_face.py input/all_videos --output output/results
+```
+
 **Batch Processing test on old version:**
 ```bash
 python bin/run_multi_face.py /path/to/video/folder/ --output /path/to/output_folder_rc5 --dev --mode rc5
@@ -115,7 +121,15 @@ cd tools/
 
 python evaluate_model_performance.py --labels-file /path/to/labels.txt --predictions-dir /path/to/results/
 ```
-
+examples
+to evaluate veriff video datasets
+```bash
+python3 evaluate_model_performance.py --labels-file assets/labels.txt --predictions-dir output/results/
+```
+to evaluate edge cases video datasets
+```bash
+python3 evaluate_model_performance.py --labels-file assets/labels_edge.txt --predictions-dir output/results/
+```
 ### Example Output
 ```
 Loading ground truth from: ../assets/labels/labels.txt
@@ -159,27 +173,11 @@ For each processed video, the system generates:
 
 ## Example Workflows
 
-### Batch Processing Multiple Videos
-
-```bash
-# Process all videos in a directory
-python bin/run_multi_face.py /path/to/video/dataset/ \
-    --output /path/to/results/ \
-    --max-frames 50 \ 
-    
-# best value is 50
-
-# Results will be saved as:
-# /path/to/results/video1_out.json
-# /path/to/results/video2_out.json
-# ...
-```
-
 ### Development and Testing
 
 ```bash
 # Quick test with fewer frames
-python bin/run_multi_face.py test_video.mp4 --max-frames 20
+python bin/run_multi_face.py test_video.mp4 --max-frames 45
 
 # CPU testing (no GPU required)
 python bin/run_multi_face.py test_video.mp4 --device -1
@@ -247,24 +245,30 @@ Use ./run_docker.sh <folder_path> to run the classifier
 
 The `run_docker.sh` script provides intelligent processing with folder-based input:
 
-#### Basic Usage
+#### Basic Usage (specific folder)
+**1. Process Veriff Videos:**
 ```bash
-# Process all videos in input/folder_name/
-./run_docker.sh <folder_name>
+# Step 1: Copy your Veriff videos to input folder
+mkdir -p input/veriff_videos
+cp /path/to/your/veriff_videos/* input/veriff_videos/
 
-# Examples:
-./run_docker.sh additional_vid     # Process input/additional_vid/
-./run_docker.sh test_videos       # Process input/test_videos/
-./run_docker.sh veriff_dataset    # Process input/veriff_dataset/
+# Step 2: Run the Docker classifier
+./run_docker.sh veriff_videos results
+
+# Results will be saved to: output/results/
+# - veriff1_out.json, veriff2_out.json, etc.
 ```
-
-#### Advanced Options
+**2. Process Edge Cases:**
 ```bash
-# Force CPU processing
-./run_docker.sh my_videos --cpu
+# Step 1: Copy your edge case videos to input folder
+mkdir -p input/edge_cases
+cp /path/to/your/edge_videos/* input/edge_cases/
 
-# Force GPU processing  
-./run_docker.sh my_videos --gpu
+# Step 2: Run the Docker classifier
+./run_docker.sh edge_cases edge_results
+
+# Results will be saved to: output/edge_results/
+# - edge1_out.json, edge2_out.json, etc.
 ```
 
 ### Directory Structure
@@ -282,7 +286,7 @@ multi-face-video-classifier/
 │   │   ├── veriff1.mp4
 │   │   ├── veriff2.mp4
 │   │   └── ...
-│   └── test_videos/                # Folder 3: Test videos
+│   └── all_videos/                # Folder 3: combined all videos into one folder
 │       ├── sample1.mp4
 │       └── sample2.mp4
 ├── output/                         # Results automatically saved here
@@ -293,37 +297,6 @@ multi-face-video-classifier/
 ├── build_docker.sh                 # Automated build script
 └── run_docker.sh                   # Automated run script
 ```
-
-### Processing Examples
-
-#### Example 1: Process Edge Cases
-```bash
-# Copy videos to input folder
-mkdir -p input/edge_cases
-cp /path/to/edge_videos/* input/edge_cases/
-
-# Process with GPU acceleration
-./run_docker.sh edge_cases
-
-# Results saved to output/ folder:
-# - output/edge1_out.json
-# - output/edge2_out.json
-# - ...
-```
-
-
-### Advanced Options (not recommended to use, might have certain bugs and issues)
-
-```bash
-# Process with custom settings
-python bin/run_multi_face.py /path/to/videos/ \
-    --max-frames 50 \
-    --device 0 \
-    --output results/ \
-
-# CPU-only processing
-python bin/run_multi_face.py /path/to/videos/ --device -1
-
 
 ## Output Format
 

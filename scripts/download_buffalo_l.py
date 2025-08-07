@@ -17,9 +17,6 @@ def main():
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall('/root/.insightface/models/')
 
-    # Clean up zip file
-    os.remove(zip_path)
-    print('buffalo_l model downloaded and extracted successfully')
 
 if __name__ == '__main__':
     main()

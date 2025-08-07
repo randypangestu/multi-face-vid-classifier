@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-SCRFD Face Detector Module
-
-This module provides the main SCRFD face detection functionality using InsightFace
-with ONNX Runtime backend and comprehensive face analysis capabilities.
+Multi-Face Video Classifier Development Version
+This module provides the main multi-face video classification functionality.
+It processes video files to detect multiple live faces, distinguishing them from faces on identity documents.
+this version is intended for development and testing purposes, which contains additional calculations, features, and debugging information.
+expect a non cleaned code, and not optimized for production use.
 """
 
 import cv2

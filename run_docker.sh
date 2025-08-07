@@ -9,27 +9,28 @@ OUTPUT_DIR="./output"
 
 # Help function
 show_help() {
-    echo "Usage: $0 <folder_path> [OPTIONS]"
+    echo "Usage: $0 <folder_path> <output_folder> [OPTIONS]"
+    echo "" 
     echo ""
     echo "Run Multi-Face Video Classifier on all videos in a folder"
     echo ""
     echo "Arguments:"
     echo "  folder_path            Path to folder containing videos (relative to input/)"
+    echo "  output_folder          Name of the output folder to save results (default: 'results')"
     echo ""
     echo "Options:"
     echo "  --device DEVICE        GPU device ID (-1 for CPU) [default: auto-detect]"
-    echo "  --cpu                  Force CPU inference"
-    echo "  --gpu                  Force GPU inference"
-    echo "  --verbose              Enable verbose logging"
+    echo "  --output OUTPUT_DIR    Custom output directory [default: ./output]"
+    echo "  --verbose              Enable verbose output"
     echo "  -h, --help             Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 additional_vid      # Process all videos in input/additional_vid/"
-    echo "  $0 veriff_videos --cpu # Process input/veriff_videos/ with CPU"
-    echo "  $0 test_folder --gpu   # Process input/test_folder/ with GPU"
+    echo "  $0 additional_vid output_folder    # Process all videos in input/additional_vid/"
+    echo "  $0 veriff_videos results --output /path/to/custom/output"
+    echo "  $0 veriff_videos results --device 0 --verbose"
     echo ""
     echo "Note: Videos should be placed in input/<folder_path>/"
-    echo "      Results will be saved to the './output' directory"
+    echo "      Results will be saved to the specified output directory"
 }
 
 # Parse command line arguments
@@ -39,6 +40,7 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
 fi
 
 FOLDER_PATH="$1"
+FOLDER_OUTPUT="${2:-results}"  # Default output folder is 'results'
 shift
 
 # Function to check GPU availability
@@ -60,6 +62,10 @@ while [ $# -gt 0 ]; do
     case $1 in
         --device)
             DEVICE_MODE="$2"
+            shift 2
+            ;;
+        --output)
+            OUTPUT_DIR="$2"
             shift 2
             ;;
         --cpu)
@@ -169,7 +175,7 @@ else
 fi
 
 # Prepare script arguments
-SCRIPT_ARGS=("/app/input/$FOLDER_PATH" "--output" "/app/output" "--device" "$DEVICE_ARG")
+SCRIPT_ARGS=("/app/input/$FOLDER_PATH" "--output" "/app/output/$FOLDER_OUTPUT" "--device" "$DEVICE_ARG")
 
 if $VERBOSE; then
     SCRIPT_ARGS+=("--verbose")
