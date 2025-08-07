@@ -1,0 +1,7 @@
+{
+  "video_id": "test_video_001",
+  "video_data": "BASE64_ENCODED_VIDEO_DATA_HERE",
+  "max_frames": 50,
+  "frame_skip": 50,
+  "mode": "rc6"
+}
