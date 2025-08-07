@@ -1,10 +1,12 @@
-# Use Ubuntu base image for CPU version
-FROM ubuntu:22.04
+# Use NVIDIA CUDA base image with Python (CUDA 12.1 for onnxruntime-gpu compatibility)
+FROM nvidia/cuda:12.1.0-devel-ubuntu22.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
 # Set working directory
 WORKDIR /app
@@ -29,6 +31,8 @@ RUN apt-get update --fix-missing && \
     wget \
     curl \
     ca-certificates \
+    git \
+    unzip \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -43,6 +47,8 @@ COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+
 # Copy source code and bin directory
 COPY src/ ./src/
 COPY bin/ ./bin/
@@ -53,5 +59,5 @@ RUN mkdir -p /app/input /app/output
 # Set permissions
 RUN chmod +x bin/run_multi_face.py
 
-# Default command - process input folder and save to output folder, use CPU mode
-CMD ["python", "bin/run_multi_face.py", "/app/input", "--output", "/app/output", "--device", "-1"]
+# Default command - process input folder and save to output folder, use GPU
+CMD ["python", "bin/run_multi_face.py", "/app/input", "--output", "/app/output", "--device", "0"]

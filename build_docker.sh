@@ -1,25 +1,52 @@
 #!/bin/bash
 
-# Build script for Multi-Face Video Classifier Docker image
+# Script to automatically build Docker image based on GPU availability
+
 set -e
 
-IMAGE_NAME="multi-face-video-classifier:latest"
+echo "Multi-Face Video Classifier - Docker Build Script"
+echo "=================================================="
 
-echo "Building Docker image: $IMAGE_NAME"
-echo "This may take 10-15 minutes due to large dependencies..."
-echo ""
+# Function to check if NVIDIA GPU is available
+check_gpu() {
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        if nvidia-smi >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
 
-# Build the image
-docker build -t "$IMAGE_NAME" .
+# Function to check if Docker supports NVIDIA runtime
+check_docker_gpu() {
+    if docker info 2>/dev/null | grep -q "nvidia"; then
+        return 0
+    fi
+    return 1
+}
 
-if [ $? -eq 0 ]; then
-    echo ""
-    echo "✅ Docker image built successfully: $IMAGE_NAME"
-    echo ""
-    echo "You can now run the container with:"
-    echo "  docker run --rm -it $IMAGE_NAME"
+# Detect GPU availability
+if check_gpu && check_docker_gpu; then
+    echo "✓ NVIDIA GPU detected and Docker GPU support available"
+    echo "Building GPU-optimized Docker image..."
+    
+    # Build GPU version
+    docker build -f Dockerfile.gpu -t multi-face-classifier-gpu .
+    
+    echo "✓ Successfully built multi-face-classifier-gpu"
+    echo "Image: multi-face-classifier-gpu:latest"
+    
 else
-    echo ""
-    echo "❌ Failed to build Docker image"
-    exit 1
+    echo "⚠ No GPU detected or Docker GPU support unavailable"
+    echo "Building CPU-only Docker image..."
+    
+    # Build CPU version  
+    docker build -f Dockerfile -t multi-face-classifier .
+    
+    echo "✓ Successfully built multi-face-classifier"
+    echo "Image: multi-face-classifier:latest"
 fi
+
+echo ""
+echo "Build completed successfully!"
+echo "Use ./run_docker.sh <folder_path> to run the classifier"

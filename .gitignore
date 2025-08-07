@@ -70,3 +70,5 @@ logs/
 *.tmp
 *.temp
 new_face_live_faces_0_8.jpg
+input/*.mp4
+input/*/*.mp4

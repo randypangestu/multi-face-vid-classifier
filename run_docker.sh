@@ -4,40 +4,31 @@
 set -e
 
 # Default values
-IMAGE_NAME="multi-face-video-classifier:latest"
-INPUT_DIR="./input"
+IMAGE_NAME="multi-face-classifier"
 OUTPUT_DIR="./output"
-DEFAULT_MODE="rc6"
-DEFAULT_DEVICE="0"
-DEFAULT_MAX_FRAMES="50"
 
 # Help function
 show_help() {
-    echo "Usage: $0 <video_path> [OPTIONS]"
+    echo "Usage: $0 <folder_path> [OPTIONS]"
     echo ""
-    echo "Run Multi-Face Video Classifier in Docker container"
+    echo "Run Multi-Face Video Classifier on all videos in a folder"
     echo ""
     echo "Arguments:"
-    echo "  video_path              Path to video file (relative to input directory)"
+    echo "  folder_path            Path to folder containing videos (relative to input/)"
     echo ""
     echo "Options:"
-    echo "  --mode MODE            Classification mode (rc1, rc2v1, rc2v2, rc3, rc4, rc5, rc6) [default: $DEFAULT_MODE]"
-    echo "  --device DEVICE        GPU device ID (-1 for CPU) [default: $DEFAULT_DEVICE]"
-    echo "  --max-frames FRAMES    Maximum frames to process [default: $DEFAULT_MAX_FRAMES]"
-    echo "  --frame-skip SKIP      Process every nth frame [default: 1]"
-    echo "  --output OUTPUT        Output JSON file path [default: auto-generated]"
-    echo "  --visualize            Create visualization video"
-    echo "  --output-video PATH    Output path for visualization video"
+    echo "  --device DEVICE        GPU device ID (-1 for CPU) [default: auto-detect]"
+    echo "  --cpu                  Force CPU inference"
+    echo "  --gpu                  Force GPU inference"
     echo "  --verbose              Enable verbose logging"
-    echo "  --cpu                  Force CPU inference (equivalent to --device -1)"
     echo "  -h, --help             Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 sample_video.mp4"
-    echo "  $0 sample_video.mp4 --mode rc6 --device 0 --visualize"
-    echo "  $0 sample_video.mp4 --cpu --verbose"
+    echo "  $0 additional_vid      # Process all videos in input/additional_vid/"
+    echo "  $0 veriff_videos --cpu # Process input/veriff_videos/ with CPU"
+    echo "  $0 test_folder --gpu   # Process input/test_folder/ with GPU"
     echo ""
-    echo "Note: Place your video files in the './input' directory"
+    echo "Note: Videos should be placed in input/<folder_path>/"
     echo "      Results will be saved to the './output' directory"
 }
 
@@ -47,65 +38,40 @@ if [ $# -eq 0 ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
     exit 0
 fi
 
-VIDEO_PATH="$1"
+FOLDER_PATH="$1"
 shift
 
-# Create input and output directories if they don't exist
-mkdir -p "$INPUT_DIR" "$OUTPUT_DIR"
+# Function to check GPU availability
+check_gpu() {
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        if nvidia-smi >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    return 1
+}
 
-# Check if video file exists
-if [ ! -f "$INPUT_DIR/$VIDEO_PATH" ]; then
-    echo "Error: Video file not found: $INPUT_DIR/$VIDEO_PATH"
-    echo "Please place your video file in the '$INPUT_DIR' directory"
-    exit 1
-fi
-
-# Build Docker run command
-DOCKER_ARGS=()
-SCRIPT_ARGS=("/app/input/$VIDEO_PATH")
+# Default device selection
+DEVICE_MODE="auto"
+VERBOSE=false
 
 # Parse options
 while [ $# -gt 0 ]; do
     case $1 in
-        --mode)
-            SCRIPT_ARGS+=("--mode" "$2")
-            shift 2
-            ;;
         --device)
-            SCRIPT_ARGS+=("--device" "$2")
+            DEVICE_MODE="$2"
             shift 2
             ;;
-
-        --dev)
-            SCRIPT_ARGS+=("--dev")
+        --cpu)
+            DEVICE_MODE="cpu"
             shift
             ;;
-        --max-frames)
-            SCRIPT_ARGS+=("--max-frames" "$2")
-            shift 2
-            ;;
-        --frame-skip)
-            SCRIPT_ARGS+=("--frame-skip" "$2")
-            shift 2
-            ;;
-        --output)
-            SCRIPT_ARGS+=("--output" "/app/output/$2")
-            shift 2
-            ;;
-        --output-video)
-            SCRIPT_ARGS+=("--output-video" "/app/output/$2")
-            shift 2
-            ;;
-        --visualize)
-            SCRIPT_ARGS+=("--visualize")
+        --gpu)
+            DEVICE_MODE="gpu"
             shift
             ;;
         --verbose)
-            SCRIPT_ARGS+=("--verbose")
-            shift
-            ;;
-        --cpu)
-            SCRIPT_ARGS+=("--device" "-1")
+            VERBOSE=true
             shift
             ;;
         *)
@@ -116,70 +82,110 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# Check if Docker image exists, load or build if not
-if ! docker image inspect "$IMAGE_NAME" &> /dev/null; then
-    IMAGE_FILE="../docker-images/multi-face-video-classifier.tar"
-    
-    # Try to load from saved file first
-    if [ -f "$IMAGE_FILE" ]; then
-        echo "Docker image '$IMAGE_NAME' not found locally. Loading from $IMAGE_FILE..."
-        if docker load -i "$IMAGE_FILE"; then
-            echo "✅ Docker image loaded successfully!"
-            echo ""
+# Create output directory if it doesn't exist
+mkdir -p "$OUTPUT_DIR"
+
+# Check if input folder exists
+INPUT_FOLDER="./input/$FOLDER_PATH"
+if [ ! -d "$INPUT_FOLDER" ]; then
+    echo "Error: Input folder not found: $INPUT_FOLDER"
+    echo "Please create the folder and place your video files there"
+    exit 1
+fi
+
+# Check if there are video files in the folder
+VIDEO_COUNT=$(find "$INPUT_FOLDER" -type f \( -iname "*.mp4" -o -iname "*.avi" -o -iname "*.mov" -o -iname "*.mkv" \) | wc -l)
+if [ "$VIDEO_COUNT" -eq 0 ]; then
+    echo "Error: No video files found in $INPUT_FOLDER"
+    echo "Supported formats: mp4, avi, mov, mkv"
+    exit 1
+fi
+
+echo "Found $VIDEO_COUNT video file(s) in $INPUT_FOLDER"
+
+# Determine device and image selection
+DOCKER_ARGS=()
+DEVICE_ARG="-1"  # Default to CPU
+
+case $DEVICE_MODE in
+    "auto")
+        if check_gpu; then
+            echo "Auto-detected GPU, using GPU acceleration"
+            DEVICE_ARG="0"
         else
-            echo "❌ Failed to load image from file. Building new image..."
-            if ! ./build_docker.sh; then
-                echo "Error: Failed to build Docker image"
-                echo ""
-                echo "Troubleshooting:"
-                echo "1. Ensure you have at least 10GB free disk space"
-                echo "2. Try running: docker system prune -a"
-                echo "3. Run ./build_docker.sh manually to see detailed errors"
-                exit 1
-            fi
+            echo "No GPU detected, using CPU"
+            DEVICE_ARG="-1"
         fi
-    else
-        echo "Docker image '$IMAGE_NAME' not found. Building..."
-        if ! ./build_docker.sh; then
-            echo "Error: Failed to build Docker image"
-            echo ""
-            echo "Troubleshooting:"
-            echo "1. Ensure you have at least 10GB free disk space"
-            echo "2. Try running: docker system prune -a"
-            echo "3. Run ./build_docker.sh manually to see detailed errors"
+        ;;
+    "gpu")
+        if check_gpu; then
+            echo "Forced GPU mode"
+            DEVICE_ARG="0"
+        else
+            echo "Warning: GPU requested but not available, falling back to CPU"
+            DEVICE_ARG="-1"
+        fi
+        ;;
+    "cpu")
+        echo "Forced CPU mode"
+        DEVICE_ARG="-1"
+        ;;
+    *)
+        # Numeric device ID
+        if [[ "$DEVICE_MODE" =~ ^[0-9]+$ ]]; then
+            DEVICE_ARG="$DEVICE_MODE"
+            echo "Using GPU device: $DEVICE_ARG"
+        else
+            echo "Invalid device: $DEVICE_MODE"
             exit 1
         fi
+        ;;
+esac
+
+# Select appropriate Docker image and runtime
+if [ "$DEVICE_ARG" == "-1" ]; then
+    # CPU mode
+    if docker image inspect "$IMAGE_NAME" &> /dev/null; then
+        echo "Using CPU image: $IMAGE_NAME"
+    else
+        echo "Error: CPU Docker image '$IMAGE_NAME' not found."
+        echo "Please run: ./build_docker.sh"
+        exit 1
+    fi
+else
+    # GPU mode - prefer GPU image, fallback to CPU image
+    if docker image inspect "multi-face-classifier-gpu" &> /dev/null; then
+        IMAGE_NAME="multi-face-classifier-gpu"
+        DOCKER_ARGS+=("--runtime=nvidia")
+        echo "Using GPU image: $IMAGE_NAME"
+    elif docker image inspect "$IMAGE_NAME" &> /dev/null; then
+        echo "GPU requested but GPU image not available, using CPU image: $IMAGE_NAME"
+        echo "Warning: This may not work optimally for GPU inference"
+    else
+        echo "Error: No Docker image found."
+        echo "Please run: ./build_docker.sh"
+        exit 1
     fi
 fi
 
-# Check if NVIDIA Docker runtime is available
-if command -v nvidia-docker &> /dev/null; then
-    DOCKER_CMD="nvidia-docker"
-elif docker info | grep -q "nvidia"; then
-    DOCKER_CMD="docker"
-    DOCKER_ARGS+=("--gpus" "all")
-else
-    DOCKER_CMD="docker"
-    echo "Warning: NVIDIA Docker runtime not detected. Using CPU inference."
-    # Override device to CPU if no GPU support
-    for i in "${!SCRIPT_ARGS[@]}"; do
-        if [[ "${SCRIPT_ARGS[$i]}" == "--device" ]] && [[ "${SCRIPT_ARGS[$((i+1))]}" != "-1" ]]; then
-            SCRIPT_ARGS[$((i+1))]="-1"
-            echo "Switched to CPU inference due to no GPU support"
-            break
-        fi
-    done
+# Prepare script arguments
+SCRIPT_ARGS=("/app/input/$FOLDER_PATH" "--output" "/app/output" "--device" "$DEVICE_ARG")
+
+if $VERBOSE; then
+    SCRIPT_ARGS+=("--verbose")
 fi
 
+echo ""
 echo "Running Multi-Face Video Classifier..."
-echo "Input video: $INPUT_DIR/$VIDEO_PATH"
-echo "Docker command: $DOCKER_CMD"
+echo "Input folder: $INPUT_FOLDER"
+echo "Processing $VIDEO_COUNT video file(s)"
+echo "Device: $DEVICE_ARG"
 echo ""
 
 # Run the container
-$DOCKER_CMD run --rm \
+docker run --rm \
     "${DOCKER_ARGS[@]}" \
-    -v "$(pwd)/$INPUT_DIR:/app/input:ro" \
+    -v "$(pwd)/input:/app/input:ro" \
     -v "$(pwd)/$OUTPUT_DIR:/app/output" \
     "$IMAGE_NAME" \
     python bin/run_multi_face.py "${SCRIPT_ARGS[@]}"
