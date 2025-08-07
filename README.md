@@ -42,140 +42,17 @@ or on `assets/multiple_face_detection_report.pdf`
 
 ### Method 1: Virtual Environment Setup
 
-This method provides full control over the Python environment and is ideal for development work.
-
-#### Prerequisites
-
-- **Python 3.8-3.11** (Python 3.10 recommended)
-- **pip** package manager
-- **Git** for repository cloning
-- **CUDA toolkit** (optional, for GPU acceleration)
-
-#### Step-by-Step Installation
-
-1. **Clone the repository**
+1. **Clone and setup**
    ```bash
    git clone <repository-url>
    cd multi-face-video-classifier
+   ./setup_venv.sh  # Linux/Mac
    ```
 
-2. **Create virtual environment**
+2. **Activate environment**
    ```bash
-   # Use the provided setup script
-   ./setup_venv.sh  # Linux/Mac only
-   
-   # Alternative: setup by yourself
-   python3 -m venv venv/multi-face-classifier
-   pip3 install -r requirements.txt
-   ```
-
-3. **Activate virtual environment**
-   ```bash
-   # Linux/Mac
    source venv/multi-face-classifier/bin/activate
-   
    ```
-   **Verification**: Your prompt should show `(multi-face-classifier)` prefix when activated.
-
-4. **Upgrade pip and install dependencies**
-   ```bash
-   # Upgrade pip to latest version
-   pip install --upgrade pip
-   
-   # Install core dependencies
-   pip install -r requirements.txt
-   
-   # For GPU support (optional)
-   pip install -r requirements.gpu.txt
-   ```
-
-#### GPU Setup (Optional)
-
-For NVIDIA GPU acceleration:
-
-1. **Install NVIDIA drivers** and **CUDA toolkit 12.1+**
-2. **Verify GPU availability**:
-   ```bash
-   python -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}')"
-   ```
-3. **Use GPU requirements**:
-   ```bash
-   pip install -r requirements.gpu.txt
-   ```
-
-#### Virtual Environment Management
-
-**Daily usage workflow**:
-```bash
-# Activate environment (do this every time)
-source venv/multi-face-classifier/bin/activate
-
-# Run your processing
-python bin/run_multi_face.py input/my_videos/ --output output/
-
-# Deactivate when done
-deactivate
-```
-
-**Environment maintenance**:
-```bash
-# Update packages
-pip install --upgrade -r requirements.txt
-
-# Check installed packages
-pip list
-
-# Save current environment
-pip freeze > requirements-current.txt
-
-# Remove environment (if needed)
-rm -rf venv/multi-face-classifier
-```
-
-#### Troubleshooting Virtual Environment
-
-**Common Issues**:
-
-1. **Permission errors**:
-   ```bash
-   # Linux/Mac: Fix permissions
-   chmod +x setup_venv.sh
-   
-   # Windows: Run as administrator
-   ```
-
-2. **Python version conflicts**:
-   ```bash
-   # Specify Python version explicitly
-   python3.10 -m venv venv/multi-face-classifier
-   ```
-
-3. **Package installation failures**:
-   ```bash
-   # Clear pip cache
-   pip cache purge
-   
-   # Install with no cache
-   pip install --no-cache-dir -r requirements.txt
-   ```
-
-4. **CUDA/GPU issues**:
-   ```bash
-   # Check CUDA installation
-   nvidia-smi
-   nvcc --version
-   
-   # Reinstall PyTorch with correct CUDA version
-   pip uninstall torch torchvision
-   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
-   ```
-
-#### Performance Tips
-
-- **Use SSD storage** for faster model loading
-- **Allocate 16GB+ RAM** for large batch processing
-- **Monitor GPU memory** usage during processing
-- **Use CPU fallback** (`--device -1`) if GPU memory insufficient
 
 ### Method 2: Docker Setup (Recommended)
 
@@ -203,17 +80,10 @@ For containerized deployment with automatic GPU/CPU detection:
 
 ### Using Virtual Environment
 
-When using the virtual environment setup, always activate it before running commands:
-
+Always activate the environment before running commands:
 ```bash
-# Activate virtual environment
 source venv/multi-face-classifier/bin/activate
-
-# Verify activation (should show environment name in prompt)
-which python  # Should point to venv/multi-face-classifier/bin/python
 ```
-
-**Note**: Remember to activate the virtual environment in each new terminal session.
 
 ### Basic Usage
 
@@ -235,15 +105,31 @@ it will also save a json file of each video, which contains the basic info and c
 
 ## Evaluation
 
-To evaluate model performance with precision, recall, accuracy, FAR, and FRR:
+After processing the video folder and obtaining the output, you can evaluate the model's performance using `evaluate_model_performance.py`.
+
+To assess the model with metrics such as precision, recall, accuracy, False Acceptance Rate (FAR), and False Rejection Rate (FRR), run the script as follows:
 
 ```bash
-# Basic evaluation (uses default labels and results)
 cd tools/
-python evaluate_model_performance.py
 
-# Custom evaluation
 python evaluate_model_performance.py --labels-file /path/to/labels.txt --predictions-dir /path/to/results/
+```
+
+### Example Output
+```
+Loading ground truth from: ../assets/labels/labels.txt
+Loading predictions from: ../output/results/
+Found 17 common videos
+==================================================
+OVERALL PERFORMANCE RESULTS
+==================================================
+Accuracy:   1.000 (100.0%)
+Precision:  1.000 (100.0%)
+Recall:     1.000 (100.0%)
+FAR:        0.000 (0.0%)
+FRR:        0.000 (0.0%)
+
+Confusion Matrix: TP=7, TN=10, FP=0, FN=0
 ```
 
 **Label file format (TSV):**
@@ -306,34 +192,12 @@ python bin/run_multi_face.py test_video.mp4 --visualize
 **Recommended for Performance:**
 - GPU: NVIDIA GPU with CUDA support
 - VRAM: 4GB+ for optimal performance
-- RAM: 16GB+ for large batch processing
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Import Errors**
-   - Ensure virtual environment is activated
-   - Install all dependencies: `pip install -r requirements.txt`
-
-2. **CUDA/GPU Issues**
-   - Check GPU availability: `python -c "import torch; print(torch.cuda.is_available())"`
-   - Use `--device -1` for CPU-only processing
-
-3. **Memory Errors**
-   - Reduce `--max-frames` parameter
-   - Use `--frame-skip 2` or higher to process fewer frames
-
-4. **Permission Errors**
-   - Ensure read/write permissions for input/output directories
-   - Check that virtual environment is properly activated
-
-### Performance Optimization
-
-- **Use folder input**: Batch processing is more efficient than individual files
-- **GPU acceleration**: Use CUDA when available for 5-10x speedup
-- **Frame optimization**: Adjust `--max-frames` and `--frame-skip` based on video length default (50 max frames)
-- **Output location**: Use fast storage (SSD) for output directory
+**Common Issues**:
+- **Import Errors**: Activate virtual environment first
+- **GPU Issues**: Use `--device -1` for CPU processing
 
 ## Docker Usage Guide
 
@@ -400,12 +264,6 @@ The `run_docker.sh` script provides intelligent processing with folder-based inp
 
 # Force GPU processing  
 ./run_docker.sh my_videos --gpu
-
-# Specific GPU device
-./run_docker.sh my_videos --device 1
-
-# Enable verbose logging
-./run_docker.sh my_videos --verbose
 ```
 
 ### Directory Structure
@@ -452,115 +310,6 @@ cp /path/to/edge_videos/* input/edge_cases/
 # - ...
 ```
 
-#### Example 2: Process Large Dataset on CPU
-```bash
-# Copy dataset
-mkdir -p input/large_dataset
-cp /path/to/videos/* input/large_dataset/
-
-# Force CPU processing (useful for servers without GPU)
-./run_docker.sh large_dataset --cpu --verbose
-
-# Monitor progress with verbose output
-```
-
-#### Example 3: Multi-GPU Server
-```bash
-# Process on specific GPU device
-./run_docker.sh dataset1 --device 0
-./run_docker.sh dataset2 --device 1
-
-# Or let the script auto-detect best GPU
-./run_docker.sh dataset1 --gpu
-```
-
-### Docker Image Selection Logic
-
-The run script intelligently selects images based on your requirements:
-
-1. **Auto-detection mode** (default):
-   - Detects GPU availability
-   - Uses GPU image if available
-   - Falls back to CPU image if needed
-
-2. **Forced GPU mode** (`--gpu`):
-   - Prefers GPU-optimized image
-   - Falls back to CPU image with warning if GPU image unavailable
-   - Uses NVIDIA Docker runtime (`--runtime=nvidia`)
-
-3. **Forced CPU mode** (`--cpu`):
-   - Always uses CPU image
-   - No GPU runtime flags
-
-### Performance Comparison
-
-| Configuration | Image | Runtime | Speed | Memory |
-|--------------|-------|---------|-------|---------|
-| GPU Mode | `multi-face-classifier-gpu` | `nvidia` | ~4x faster | Higher VRAM |
-| CPU Mode | `multi-face-classifier` | `runc` | Baseline | Lower RAM |
-
-### Supported Video Formats
-
-The Docker setup automatically detects these video formats:
-- `.mp4` (recommended)
-- `.avi`
-- `.mov` 
-- `.mkv`
-
-### Troubleshooting Docker
-
-#### GPU Not Detected
-```bash
-# Check GPU availability
-nvidia-smi
-
-# Check Docker NVIDIA runtime
-docker info | grep nvidia
-
-# Force rebuild if needed
-docker rmi multi-face-classifier-gpu
-./build_docker.sh
-```
-
-#### No Videos Found Error
-```bash
-# Error: No video files found in ./input/folder_name
-# Solution: Check folder exists and contains supported video files
-ls -la input/folder_name/
-```
-
-#### Permission Issues
-```bash
-# Fix permissions for input/output folders
-chmod -R 755 input/
-chmod -R 755 output/
-```
-
-### Manual Docker Commands (Advanced)
-
-If you prefer manual control over the Docker setup:
-
-```bash
-# Manual GPU build
-docker build -f Dockerfile.gpu -t multi-face-classifier-gpu .
-
-# Manual CPU build  
-docker build -f Dockerfile -t multi-face-classifier .
-
-# Manual run with GPU
-docker run --rm --runtime=nvidia \
-  -v "$(pwd)/input:/app/input:ro" \
-  -v "$(pwd)/output:/app/output" \
-  multi-face-classifier-gpu \
-  python bin/run_multi_face.py /app/input/folder_name --output /app/output --device 0
-
-# Manual run with CPU
-docker run --rm \
-  -v "$(pwd)/input:/app/input:ro" \
-  -v "$(pwd)/output:/app/output" \
-  multi-face-classifier \
-  python bin/run_multi_face.py /app/input/folder_name --output /app/output --device -1
-```
 
 ## Project Structure
 

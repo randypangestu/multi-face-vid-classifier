@@ -138,9 +138,8 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
         Examples:
-        %(prog)s labels.txt predictions_dir/
-        %(prog)s labels.txt predictions_dir/ --subclass
-        %(prog)s labels.txt predictions_dir/ --verbose
+        %(prog)s ../assets/labels/labels.txt ../output/veriff_results/
+        %(prog)s ../assets/labels/labels.txt ../output/additional_data/
                 """
             )
     
