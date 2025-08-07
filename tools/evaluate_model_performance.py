@@ -7,6 +7,7 @@ Calculates key metrics: Accuracy, Precision, Recall, FAR, and FRR.
 
 import json
 import os
+import argparse
 from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix
 
 
@@ -32,7 +33,7 @@ def load_predictions(predictions_dir):
             filepath = os.path.join(predictions_dir, filename)
             with open(filepath, 'r') as f:
                 data = json.load(f)
-                predictions_dict[video_name] = data['classification_binary_label']
+                predictions_dict[video_name] = data['class']
     return predictions_dict
 
 
@@ -84,6 +85,7 @@ def analyze_subclass_performance(ground_truth, predictions, common_videos):
     
     print("\n" + "=" * 50)
     print("SUBCLASS PERFORMANCE ANALYSIS")
+    print("Currently only supports veriff dataset")
     print("=" * 50)
     
     for subclass, videos in subclass_config.items():
@@ -129,32 +131,90 @@ def print_results(metrics):
     print(f"\nConfusion Matrix: TP={metrics['tp']}, TN={metrics['tn']}, FP={metrics['fp']}, FN={metrics['fn']}")
 
 
+def parse_arguments():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description="Evaluate face anti-spoofing model performance",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+        Examples:
+        %(prog)s labels.txt predictions_dir/
+        %(prog)s labels.txt predictions_dir/ --subclass
+        %(prog)s labels.txt predictions_dir/ --verbose
+                """
+            )
+    
+    parser.add_argument(
+        '--labels-file', '-l', default='../assets/labels/labels.txt',
+        help='Path to ground truth labels file (TSV format)'
+    )
+    
+    parser.add_argument(
+        '--predictions-dir', '-p', default='../output/results/',
+        help='Directory containing prediction JSON files'
+    )
+    
+    parser.add_argument(
+        '--subclass',
+        action='store_true',
+        help='Include subclass performance analysis'
+    )
+    
+    parser.add_argument(
+        '--verbose',
+        action='store_true',
+        help='Show detailed output including predictions'
+    )
+    
+    return parser.parse_args()
+
+
 def main():
     """Main evaluation function."""
-    labels_file = "/media/ranpang/Personal/Codes/Veriff/test_details/videos/labels2.txt"
-    predictions_dir = "/media/ranpang/Personal/Codes/Veriff/repo/multi-face-video-classifier/data/output_test/rc6"
+    args = parse_arguments()
+    
+    # Validate input files
+    if not os.path.exists(args.labels_file):
+        print(f"ERROR: Labels file not found: {args.labels_file}")
+        return
+    
+    if not os.path.exists(args.predictions_dir):
+        print(f"ERROR: Predictions directory not found: {args.predictions_dir}")
+        return
     
     # Load data
-    ground_truth = load_ground_truth_labels(labels_file)
-    predictions = load_predictions(predictions_dir)
+    print(f"Loading ground truth from: {args.labels_file}")
+    ground_truth = load_ground_truth_labels(args.labels_file)
+    
+    print(f"Loading predictions from: {args.predictions_dir}")
+    predictions = load_predictions(args.predictions_dir)
+    
     # Find common videos
     common_videos = set(ground_truth.keys()) & set(predictions.keys())
     
     if not common_videos:
         print("ERROR: No matching videos found!")
+        print(f"Ground truth videos: {list(ground_truth.keys())}")
+        print(f"Prediction videos: {list(predictions.keys())}")
         return
+    
+    print(f"Found {len(common_videos)} common videos")
     
     # Prepare labels
     y_true = [ground_truth[video] for video in sorted(common_videos)]
     y_pred = [predictions[video] for video in sorted(common_videos)]
-    print('y_true:', y_true)
-    print('y_pred:', y_pred)
+    
+    if args.verbose:
+        print(f'Ground truth: {y_true}')
+        print(f'Predictions:  {y_pred}')
+    
     # Calculate and print overall metrics
     metrics = calculate_metrics(y_true, y_pred)
     print_results(metrics)
     
-    # Analyze subclass performance
-    analyze_subclass_performance(ground_truth, predictions, common_videos)
+    # Analyze subclass performance if requested
+    if args.subclass:
+        analyze_subclass_performance(ground_truth, predictions, common_videos)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,6 @@ deprecated_script/
 
 # Data and assets
 data/
-assets/
 
 # Virtual environments
 venv/

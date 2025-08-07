@@ -19,7 +19,10 @@ def get_args():
     
     parser.add_argument("video_path", help="Path to the video file")
     
-    parser.add_argument("--model", default="buffalo_l", 
+    parser.add_argument("--output", type=str, default="output/results/",
+                       help="Output JSON file path")
+
+    parser.add_argument("--model", default="buffalo_l",
                        choices=["buffalo_l", "buffalo_m", "buffalo_s"],
                        help="InsightFace model name (default: buffalo_l)")
     
@@ -40,8 +43,6 @@ def get_args():
     parser.add_argument("--device", type=int, default=0,
                        help="GPU device ID (use -1 for CPU, default: 0)")
     
-    parser.add_argument("--output", type=str, default=None,
-                       help="Output JSON file path")
     
     parser.add_argument("--visualize", action="store_true",
                        help="Create visualization video with detections")
@@ -59,13 +60,12 @@ def main():
     args = get_args()
     if args.dev:
         logger.info("Using VideoClassifierDevelopment mode")
-        from multi_face_video_classifier.video_pipeline_dev import VideoClassifierDevelopment as VideoClassifier
+        from multi_face_video_classifier.video_pipeline_dev import VideoClassifierDev as VideoClassifier
     else:
         logger.info("Using VideoClassifier mode, will always run rc6 version")
         from multi_face_video_classifier.video_pipeline import VideoClassifier
     # Validate and get video files
     video_path = Path(args.video_path)
-    
     if video_path.is_dir():
         # Process all video files in directory
         video_extensions = ["*.mp4", "*.avi", "*.mov", "*.mkv", "*.wmv"]
@@ -109,7 +109,8 @@ def main():
             device='cuda' if args.device >= 0 else 'cpu',
             mode=args.mode,
             ctx_id=args.device,
-            det_size=tuple(args.det_size)
+            det_size=tuple(args.det_size),
+            visualize=args.visualize,
         )
         logger.info("VideoClassifier initialized successfully")
     except Exception as e:
@@ -124,11 +125,18 @@ def main():
         logger.info(f"=============================================")
         logger.info(f"Processing video {i}/{len(video_files)}: {video_file.name}")
         
-        results = detector.classify_video(
+        results = {
+            'transaction_id': video_file.stem,
+            'code': "0000", # 0000 is a placeholder for success
+            'message': "Success" # Placeholder message keys
+        }
+
+        classification_results = detector.classify_video(
             video_path=str(video_file),
             max_frames=args.max_frames,
             frame_skip=args.frame_skip
         )
+        results.update(classification_results)
         logger.info(f"Results for {video_file.name}: {results.get('class', 'Unknown')}")
         
         # Determine output path
@@ -160,7 +168,8 @@ def main():
             continue
         
         # Create visualization if requested
-        if args.visualize:
+        # Set to False due to issues on saving videos
+        if False:
             try:
                 if args.output_video:
                     if len(video_files) == 1:

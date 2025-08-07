@@ -48,7 +48,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module='onnxruntime')
 
 VERSION_DICT = {}
 
-class VideoClassifier:
+class VideoClassifierDev:
     """
     Video Classifier to classify videos based on the presence of multiple live faces.
     0 - No multiple live faces detected

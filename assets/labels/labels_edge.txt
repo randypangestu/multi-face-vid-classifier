@@ -1,0 +1,5 @@
+video	label
+edge1	1
+edge2	1
+edge3	0
+edge4	1

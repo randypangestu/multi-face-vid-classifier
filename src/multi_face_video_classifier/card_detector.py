@@ -35,7 +35,7 @@ class CardDetector:
     
     DEFAULT_MODEL_ID = "IDEA-Research/grounding-dino-tiny"
     DEFAULT_BOX_THRESHOLD = 0.4
-    DEFAULT_TEXT_THRESHOLD = 0.3
+    DEFAULT_TEXT_THRESHOLD = 0.2
     CARD_QUERY_DICT = {"others": ["identity card."],
                       "rc5": ["identity card.", "card."],
                       "rc6": ["identity card.", "card."],}
@@ -45,7 +45,7 @@ class CardDetector:
         self,
         model_id: str = DEFAULT_MODEL_ID,
         device: str = "auto",
-        mode: str = "rc5",
+        mode: str = "rc6",
         box_threshold: float = DEFAULT_BOX_THRESHOLD,
         text_threshold: float = DEFAULT_TEXT_THRESHOLD,
     ) -> None:
@@ -65,6 +65,7 @@ class CardDetector:
         self.text_threshold = text_threshold
         self.mode = 'others' if mode not in self.CARD_QUERY_DICT else mode
         # Set device
+        print('video self.mode', self.mode)
         self.device = self._determine_device(device)
         
         # Initialize model components
@@ -472,71 +473,7 @@ class CardDetector:
             logger.error("Detection failed: %s", exc)
             return []
     
-    def crop_detected_cards(
-        self,
-        image_input: Union[str, np.ndarray, Image.Image],
-        padding: int = 10,
-    ) -> List[np.ndarray]:
-        """Detect ID cards and return cropped regions.
-        
-        Args:
-            image_input: Image to process.
-            padding: Padding around detected bounding boxes.
-            
-        Returns:
-            List of cropped card images as numpy arrays.
-        """
-        bboxes = self.detect(image_input)
-        
-        if not bboxes:
-            return []
-        
-        # Load image as numpy array
-        image_np = self._load_image_as_numpy(image_input)
-        
-        cropped_cards = []
-        height, width = image_np.shape[:2]
-        
-        for bbox in bboxes:
-            x1, y1, x2, y2 = [int(coord) for coord in bbox]
-            
-            # Apply padding and ensure bounds
-            x1 = max(0, x1 - padding)
-            y1 = max(0, y1 - padding)
-            x2 = min(width, x2 + padding)
-            y2 = min(height, y2 + padding)
-            
-            # Crop the card region
-            cropped_card = image_np[y1:y2, x1:x2]
-            cropped_cards.append(cropped_card)
-        
-        logger.info("Cropped %d ID card region(s)", len(cropped_cards))
-        return cropped_cards
-    
-    def _load_image_as_numpy(self, image_input: Union[str, np.ndarray, Image.Image]) -> np.ndarray:
-        """Load image as numpy array in BGR format.
-        
-        Args:
-            image_input: Image to load.
-            
-        Returns:
-            Image as numpy array in BGR format.
-        """
-        if isinstance(image_input, str):
-            if image_input.startswith(("http://", "https://")):
-                response = requests.get(image_input, stream=True)
-                response.raise_for_status()
-                image_pil = Image.open(response.raw).convert("RGB")
-                return cv2.cvtColor(np.array(image_pil), cv2.COLOR_RGB2BGR)
-            else:
-                return cv2.imread(image_input)
-        elif isinstance(image_input, np.ndarray):
-            return image_input.copy()
-        elif isinstance(image_input, Image.Image):
-            return cv2.cvtColor(np.array(image_input), cv2.COLOR_RGB2BGR)
-        else:
-            raise ValueError(f"Unsupported image input type: {type(image_input)}")
-    
+   
     def get_detailed_detections(self, image_input: Union[str, np.ndarray, Image.Image]) -> List[Dict]:
         """Get detailed detection information including query metadata.
         
@@ -547,78 +484,6 @@ class CardDetector:
             List of detailed detection dictionaries with confidence, query info, etc.
         """
         return self._detect_with_full_details(image_input)
-
-
-def main() -> int:
-    """Example usage of CardDetector.
-    
-    Returns:
-        Exit code (0 for success, 1 for error).
-    """
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="ID Card Detection using Grounding DINO")
-    parser.add_argument("--image", required=True, help="Path to image file or URL")
-    parser.add_argument("--output", help="Output visualization path (optional)")
-    parser.add_argument(
-        "--box_threshold",
-        type=float,
-        default=CardDetector.DEFAULT_BOX_THRESHOLD,
-        help="Box confidence threshold",
-    )
-    parser.add_argument(
-        "--text_threshold",
-        type=float,
-        default=CardDetector.DEFAULT_TEXT_THRESHOLD,
-        help="Text confidence threshold",
-    )
-    parser.add_argument("--device", default="auto", help="Device: cuda, cpu, or auto")
-    parser.add_argument("--crop", action="store_true", help="Save cropped card regions")
-    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
-    
-    args = parser.parse_args()
-    
-    # Set logging level
-    if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
-        logging.basicConfig(level=logging.INFO)
-    
-    try:
-        # Initialize detector
-        detector = CardDetector(
-            device=args.device,
-            box_threshold=args.box_threshold,
-            text_threshold=args.text_threshold,
-        )
-        
-        print(f"Processing image: {args.image}")
-        
-        # Detect cards with visualization
-        bboxes, vis_image = detector.detect_with_visualization(args.image, args.output)
-        
-        # Print results
-        print(f"\nDetected {len(bboxes)} ID card(s):")
-        for i, bbox in enumerate(bboxes):
-            bbox_int = [int(coord) for coord in bbox]
-            print(f"  Card {i+1}: bbox={bbox_int}")
-        
-        # Save cropped cards if requested
-        if args.crop and bboxes:
-            cropped_cards = detector.crop_detected_cards(args.image)
-            for i, cropped_card in enumerate(cropped_cards):
-                crop_path = f"cropped_card_{i+1}.jpg"
-                cv2.imwrite(crop_path, cropped_card)
-                print(f"  Cropped card {i+1} saved to: {crop_path}")
-        
-        if not bboxes:
-            print("No ID cards detected with the given thresholds.")
-    
-    except Exception as exc:
-        logger.error("Error: %s", exc)
-        return 1
-    
-    return 0
 
 
 if __name__ == "__main__":

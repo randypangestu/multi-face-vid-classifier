@@ -37,7 +37,7 @@ warnings.simplefilter("ignore")
 
 logger = logging.getLogger(__name__)
 # Set up logging level
-logging.basicConfig(level=logging.INFO, format='%(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s - %(message)s')
 ort.set_default_logger_severity(4)   
 
 MODELS_DICT = {
@@ -138,6 +138,56 @@ class VideoClassifier:
             logger.error(f"Failed to initialize SCRFD model: {str(e)}")
             raise
     
+    def classify_video(self, video_path: str, 
+                     max_frames: int = 100,
+                     frame_skip: int = 1) -> Dict[str, Any]:
+        """
+        Process video for face detection across multiple frames.
+        
+        Args:
+            video_path: Path to video file
+            max_frames: Maximum number of frames to process
+            frame_skip: Process every nth frame (1 = process all frames)
+            
+        Returns:
+            Dictionary containing comprehensive face detection results
+        """
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Video file not found: {video_path}")
+        
+        start_time = time.time()
+        
+        # Open and validate video
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            raise ValueError(f"Could not open video: {video_path}")
+        try:
+            # Get video properties
+            video_info = self._extract_video_info(cap, video_path)
+            logger.debug(f"Total frames: {video_info['total_frames']}, FPS: {video_info['fps']:.2f}, Duration: {video_info['duration_seconds']:.2f}s")
+            
+            # Process frames
+            frame_results, flagged_frames = self._process_video_frames(cap, video_info, max_frames, frame_skip)
+            logger.debug(f'TOTAL FLAGGED FRAMES: {len(flagged_frames)}')
+
+            video_classification = self._classify_multiple_live_faces(flagged_frames)
+            logger.debug(f"Video classification result, path: {video_path}, contain_multiple_live_faces: {video_classification['contain_multiple_live_faces']}")
+            # Analyze results with tracking
+            if False:
+                analysis = self._analyze_video_results(frame_results, video_path)
+                
+                # Compile final results
+                results = self._compile_video_results(
+                    video_info, frame_results, analysis, max_frames, frame_skip, start_time
+                )
+            logger.info(f"class: {video_classification['class']}")
+            logger.info(f"n_faces: {video_classification['n_faces']}")           
+            
+            return video_classification
+            
+        finally:
+            cap.release()
+
     def detect_faces_in_image(self, image: np.ndarray) -> List[Dict[str, Any]]:
         """
         Detect faces in a single image with pose estimation.
@@ -340,6 +390,7 @@ class VideoClassifier:
             embedding_live_face_list = self._get_unique_live_faces(
                 frame, card_bboxes, not_live_face_idx, embedding_live_face_list
             )
+            logger.info(f"Frame {idx}: Number of live faces: {number_live_faces}, Embedding list length: {len(embedding_live_face_list)}")
             # override number of live faces with the number of unique embeddings 
             number_live_faces = max(number_live_faces, len(embedding_live_face_list))
             
@@ -501,55 +552,7 @@ class VideoClassifier:
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         cv2.imwrite(f"{prefix}_live_faces_{idx}_{random.randint(0,100)}.jpg", frame['frame'])
 
-    def classify_video(self, video_path: str, 
-                     max_frames: int = 100,
-                     frame_skip: int = 1) -> Dict[str, Any]:
-        """
-        Process video for face detection across multiple frames.
-        
-        Args:
-            video_path: Path to video file
-            max_frames: Maximum number of frames to process
-            frame_skip: Process every nth frame (1 = process all frames)
-            
-        Returns:
-            Dictionary containing comprehensive face detection results
-        """
-        if not os.path.exists(video_path):
-            raise FileNotFoundError(f"Video file not found: {video_path}")
-        
-        start_time = time.time()
-        
-        # Open and validate video
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            raise ValueError(f"Could not open video: {video_path}")
-        try:
-            # Get video properties
-            video_info = self._extract_video_info(cap, video_path)
-            logger.debug(f"Total frames: {video_info['total_frames']}, FPS: {video_info['fps']:.2f}, Duration: {video_info['duration_seconds']:.2f}s")
-            
-            # Process frames
-            frame_results, flagged_frames = self._process_video_frames(cap, video_info, max_frames, frame_skip)
-            logger.debug(f'TOTAL FLAGGED FRAMES: {len(flagged_frames)}')
-
-            video_classification = self._classify_multiple_live_faces(flagged_frames)
-            logger.info(f"Video classification result, path: {video_path}, contain_multiple_live_faces: {video_classification['contain_multiple_live_faces']}")
-            # Analyze results with tracking
-            if False:
-                analysis = self._analyze_video_results(frame_results, video_path)
-                
-                # Compile final results
-                results = self._compile_video_results(
-                    video_info, frame_results, analysis, max_frames, frame_skip, start_time
-                )
-            logger.info(f"class: {video_classification['class']}")
-            logger.info(f"n_faces: {video_classification['n_faces']}")           
-            
-            return video_classification
-            
-        finally:
-            cap.release()
+    
     
     def _extract_video_info(self, cap: cv2.VideoCapture, video_path: str) -> Dict[str, Any]:
         """

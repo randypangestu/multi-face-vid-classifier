@@ -8,14 +8,34 @@ This classifier analyzes video content and returns:
 - **Class 0**: Single or no live faces detected (faces on ID cards are filtered out)
 - **Class 1**: Multiple live faces detected simultaneously
 
+![Process Flow](assets/multiple-dark.jpg)
+
+
 The system uses advanced face detection (SCRFD), object detection for ID cards, and face recognition embeddings to accurately classify videos while filtering out faces appearing on identity documents.
+
+## Method Evaluation Results
+
+Short Report can be found here: [Google docs](https://docs.google.com/document/d/1XB7ve1DSaOkBgEwqTEHAK--lw9-cPpKEtHt0TXbcgak/edit?tab=t.0)
+or on `assets/multiple_face_detection_report.pdf`
+
+| Method Name                                                   | Main Benchmark (Veriff, 19 videos)     |                                      | Additional Edge Cases (4 videos)     |                                      |
+|---------------------------------------------------------------|----------------------------------------|--------------------------------------|----------------------------------------|--------------------------------------|
+|                                                               | **Precision**                          | **Recall**                           | **Precision**                          | **Recall**                           |
+| RC1 - Baseline                                                | 58.30%                                 | 100%                                 | -                                      | -                                    |
+| RC2v1 - One-shot Clip                                         | -                                      | -                                    | -                                      | -                                    |
+| RC2v2 - One-shot Clip (face removed)                          | -                                      | -                                    | -                                      | -                                    |
+| RC3 - Grounding DINO                                          | 75.00%                                 | 42.90%                               | -                                      | -                                    |
+| RC4 - Grounding DINO + ID Card Classification                | 87.50%                                 | 100%                                 | -                                      | -                                    |
+| RC5 - RC4 + Additional Text Query                             | **100%**                               | **100%**                             | **0%**                                 | **0%**                               |
+| RC6 - RC5 + Face Recognition + Face Occlusion Check           | **100%**                               | **100%**                             | **50%**                                | **33.30%**                           |
+
+
 
 ## Features
 
 - **Advanced Face Detection**: Uses InsightFace SCRFD models with ONNX Runtime
 - **ID Card Filtering**: Automatically detects and filters faces on identity documents  
 - **Face Recognition**: Employs embedding similarity to identify unique individuals
-- **Batch Processing**: Process entire folders of videos efficiently
 - **GPU Acceleration**: CUDA support for faster processing
 - **Flexible Input**: Supports single videos or directory batch processing
 
@@ -74,15 +94,28 @@ source venv/multi-face-classifier/bin/activate
 
 **Single Video:**
 ```bash
-python bin/run_multi_face.py /path/to/video.mp4
+python bin/run_multi_face.py /path/to/video.mp4 --output /path/to/output_folder/
 ```
 
 **Batch Processing (Recommended):**
 ```bash
-python bin/run_multi_face.py /path/to/video/folder/
+python bin/run_multi_face.py /path/to/video/folder/ --output /path/to/output_folder
+```
+**Batch Processing test on old version:**
+```bash
+python bin/run_multi_face.py /path/to/video/folder/ --output /path/to/output_folder_rc5 --dev --mode rc5
 ```
 
 The script automatically detects if the input is a file or directory and processes accordingly.
+it will also save a json file of each video, which contains the basic info and classification results
+
+## Evaluation
+To do a simple calculation of precision, recall, accuracy, FAR, FRR run this:
+**Veriff small benchmark dataset**
+```bash
+python tools/
+
+**
 
 ### Advanced Options
 
